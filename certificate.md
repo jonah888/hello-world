@@ -60,91 +60,61 @@
 ### 加解密
 OpenSSL是SSL/TLS的开源实现，我们就用它来练练手吧。首先，用DES加解密文本：
 
-1
-2
-echo Hello World! | openssl enc -e -des -a    ## 需要输入两次密码，如果你输入的都是1，那么可以用下一条命令解密
-echo U2FsdGVkX19NMXhTRoTNJE0YV+TKcRL0+xzT9UMUN5Y= | openssl enc -d -des -a
+1 echo Hello World! | openssl enc -e -des -a    ## 需要输入两次密码，如果你输入的都是1，那么可以用下一条命令解密
+2 echo U2FsdGVkX19NMXhTRoTNJE0YV+TKcRL0+xzT9UMUN5Y= | openssl enc -d -des -a
 其中的-a代表base64编码。还可以多试几次加密，就算文本、密码相同，每次加密的结果也很可能是不一样的。把上面的-des变成-des3或者是-aes-256-cbc就可以自行尝试DES3和AES加解密了。接下来尝试RSA。首先生成RSA的私钥：
 
-1
-2
-openssl genrsa -out private.pem 2048
-cat private.pem
+1 openssl genrsa -out private.pem 2048
+2 cat private.pem
 PEM表示这是base64编码的密钥，也可以改成DER即二进制的密钥，加上一个-outform DER的参数就行。然后通过私钥生成公钥：
 
-1
-2
-openssl rsa -in private.pem -pubout -out public.pem
-cat public.pem
+1 openssl rsa -in private.pem -pubout -out public.pem
+2 cat public.pem
 接下来用刚刚生成的公钥加密，私钥解密：
 
-1
-2
-3
-echo Hello World! | openssl rsautl -encrypt -pubin -inkey public.pem -out encrypt
-cat encrypt
-cat encrypt | openssl rsautl -decrypt -inkey private.pem
+1 echo Hello World! | openssl rsautl -encrypt -pubin -inkey public.pem -out encrypt
+2 cat encrypt
+3 cat encrypt | openssl rsautl -decrypt -inkey private.pem
 然后私钥加密，公钥解密。注意这个的意义其实是私钥签名，公钥认证：
 
-1
-2
-3
-echo Hello World! | openssl rsautl -sign -inkey private.pem -out encrypt
-cat encrypt
-cat encrypt | openssl rsautl -verify -pubin -inkey public.pem
+1 echo Hello World! | openssl rsautl -sign -inkey private.pem -out encrypt
+2 cat encrypt
+3 cat encrypt | openssl rsautl -verify -pubin -inkey public.pem
+
 ### 散列
 现在轮到散列算法了：
 
-1
-2
-echo Hello World! | openssl dgst -md5
-echo Hello World! | openssl dgst -sha1
+1 echo Hello World! | openssl dgst -md5
+2 echo Hello World! | openssl dgst -sha1
 也可以用linux自带的小工具实现：
 
-1
-2
-3
-4
-5
-6
-echo Hello World! | md5sum
-echo Hello World! | sha1sum
-echo Hello World! | sha224sum
-echo Hello World! | sha256sum
-echo Hello World! | sha384sum
-echo Hello World! | sha512sum
+1 echo Hello World! | md5sum
+2 echo Hello World! | sha1sum
+3 echo Hello World! | sha224sum
+4 echo Hello World! | sha256sum
+5 echo Hello World! | sha384sum
+6 echo Hello World! | sha512sum
 是不是越来越长了？散列越长越不容易被碰撞。
 
 ### 证书
 申请证书，首先需要生成CSR文件。而CSR文件需要先生成私钥：
 
-1
-2
-3
-openssl genrsa -out private.pem 2048
-openssl req -new -key private.pem -out domain.csr
-cat domain.csr
+1 openssl genrsa -out private.pem 2048
+2 openssl req -new -key private.pem -out domain.csr
+3 cat domain.csr
 生成私钥文件是可以加密的，加上一个参数比如-des3就可以了。生成CSR文件的时候需要填写各种信息，没耐心就随便写点什么甚至一路回车也行，反正又不是真的去找CA。如果你真的有需求，这里有一张表格说明了应该怎么填。填完的东西可以这么看：
 
-1
-openssl req -noout -text -in domain.csr
+1 openssl req -noout -text -in domain.csr
 现在我们假装自己是个CA，有自己的密钥对，然后对刚才提交的CSR文件签名：
 
-1
-2
-3
-openssl genrsa -out private_ca.pem 2048
-openssl x509 -req -days 365 -in domain.csr -signkey private_ca.pem -out my_domain.crt
-cat my_domain.crt
+1 openssl genrsa -out private_ca.pem 2048
+2 openssl x509 -req -days 365 -in domain.csr -signkey private_ca.pem -out my_domain.crt
+3 cat my_domain.crt
 大功告成！生成的my_domain.crt就是我们要的证书。由于这个是自签名证书，默认是不被我们的操作系统信任的。如果我们需要增加信任，可以参考这里。比如在Ubuntu/Debian里可以这么做：
 
-1
-2
-sudo cp my_domain.crt /usr/local/share/ca-certificates/
-sudo update-ca-certificates
+1 sudo cp my_domain.crt /usr/local/share/ca-certificates/
+2 sudo update-ca-certificates
 如果要取消信任，可以这么做：
 
-1
-2
-sudo rm /usr/local/share/ca-certificates/my_domain.crt
-sudo update-ca-certificates --fresh
+1 sudo rm /usr/local/share/ca-certificates/my_domain.crt
+2 sudo update-ca-certificates --fresh
